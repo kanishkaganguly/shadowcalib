@@ -1,47 +1,102 @@
 <launch>
-    <arg name="show_output" default="false"/>
-    <arg name="launch_calibration" default="false"/>
-    <arg name="camera_name" default="logitech_webcam"/>
+    <arg name="show_output" default="false" />
+    <arg name="launch_calibration" default="false" />
+    <arg name="aruco_tracker" default="false" />
+    <arg name="camera_name" default="logitech_webcam" />
+    <arg name="front_camera_prefix" default="front_" />
+    <arg name="left_camera_prefix" default="left_" />
+    <arg name="front_camera_device" default="/dev/video4 " />
+    <arg name="left_camera_device" default="/dev/video2" />
 
-    <!-- Start webcam -->
-    <node name="$(arg camera_name)" pkg="usb_cam" type="usb_cam_node" output="screen">
-        <param name="video_device" value="/dev/video1" />
-        <param name="image_width" value="1920" />
-        <param name="image_height" value="1080" />
+    <!-- Start front webcam -->
+    <node name="webcam" pkg="usb_cam" type="usb_cam_node" output="screen" ns="$(arg front_camera_prefix)$(arg camera_name)">
+        <param name="video_device" value="$(arg front_camera_device)" />
+        <param name="image_width" value="1280" />
+        <param name="image_height" value="720" />
         <param name="pixel_format" value="yuyv" />
-        <param name="camera_frame_id" value="tracking_cam" />
-        <param name="camera_name" value="$(arg camera_name)" />
-        <param name="camera_info_url" value="package://shadowteleop/calibration/camera/logitech_webcam.yaml" />
-        <param name="io_method" value="mmap"/>
+        <param name="camera_frame_id" value="$(arg front_camera_prefix)tracking_cam" />
+        <param name="camera_name" value="$(arg front_camera_prefix)$(arg camera_name)" />
+        <param name="camera_info_url" value="package://shadowcalib/calibration/camera/$(arg front_camera_prefix)$(arg camera_name).yaml" />
+        <param name="io_method" value="mmap" />
     </node>
+
+    <!-- Start left webcam -->
+    <node name="webcam" pkg="usb_cam" type="usb_cam_node" output="screen" ns="$(arg left_camera_prefix)$(arg camera_name)">
+        <param name="video_device" value="$(arg left_camera_device)" />
+        <param name="image_width" value="1280" />
+        <param name="image_height" value="720" />
+        <param name="pixel_format" value="yuyv" />
+        <param name="camera_frame_id" value="$(arg left_camera_prefix)tracking_cam" />
+        <param name="camera_name" value="$(arg left_camera_prefix)$(arg camera_name)" />
+        <param name="camera_info_url" value="package://shadowcalib/calibration/camera/$(arg left_camera_prefix)$(arg camera_name).yaml" />
+        <param name="io_method" value="mmap" />
+    </node>
+
 
     <!-- Rectified image -->
-    <node name="rectify_image" pkg="image_proc" type="image_proc" output="screen" ns="$(arg camera_name)"/>
-
-    <!-- Start aruco tracker -->
-    <node name="aruco_detect" pkg="aruco_detect" type="aruco_detect" output="screen">
-        <remap from="camera" to="$(arg camera_name)/image_rect_color" />
-        <remap from="camera_info" to="$(arg camera_name)/camera_info" />
-        <param name="fiducial_len" value="0.05"/>
-        <param name="dictionary" value="5"/>
-        <param name="publish_images" value="true" />
+    <node name="$(arg front_camera_prefix)rectify_image" pkg="image_proc" type="image_proc" output="screen" ns="$(arg front_camera_prefix)$(arg camera_name)">
+        <remap from="image_raw" to="webcam/image_raw" />
+        <remap from="camera_info" to="webcam/camera_info" />
+    </node>
+    <node name="$(arg left_camera_prefix)rectify_image" pkg="image_proc" type="image_proc" output="screen" ns="$(arg left_camera_prefix)$(arg camera_name)">
+        <remap from="image_raw" to="webcam/image_raw" />
+        <remap from="camera_info" to="webcam/camera_info" />
     </node>
 
+    <!-- Start aruco tracker -->
+    <group if="$(arg aruco_tracker)">
+        <node name="aruco_detect" pkg="aruco_detect" type="aruco_detect" output="screen" ns="$(arg front_camera_prefix)$(arg camera_name)">
+            <param name="fiducial_len" value="0.05" />
+            <param name="dictionary" value="5" />
+            <param name="publish_images" value="true" />
+            <param name="cam_prefix" value="/$(arg front_camera_prefix)$(arg camera_name)" />
+            <param name="publish_fiducial_tf" value="false" />
+            <remap from="camera" to="image_rect_color" />
+            <remap from="camera_info" to="webcam/camera_info" />
+            <remap from="/fiducial_images" to="/$(arg front_camera_prefix)$(arg camera_name)/fiducial_images" />
+            <remap from="/fiducial_transforms" to="/$(arg front_camera_prefix)$(arg camera_name)/fiducial_transforms" />
+            <remap from="/fiducial_vertices" to="/$(arg front_camera_prefix)$(arg camera_name)/fiducial_vertices" />
+        </node>
+        <node name="aruco_detect" pkg="aruco_detect" type="aruco_detect" output="screen" ns="$(arg left_camera_prefix)$(arg camera_name)">
+            <param name="fiducial_len" value="0.05" />
+            <param name="dictionary" value="5" />
+            <param name="publish_images" value="true" />
+            <param name="cam_prefix" value="/$(arg left_camera_prefix)$(arg camera_name)" />
+            <param name="publish_fiducial_tf" value="false" />
+            <remap from="camera" to="image_rect_color" />
+            <remap from="camera_info" to="webcam/camera_info" />
+            <remap from="/fiducial_images" to="/$(arg left_camera_prefix)$(arg camera_name)/fiducial_images" />
+            <remap from="/fiducial_transforms" to="/$(arg left_camera_prefix)$(arg camera_name)/fiducial_transforms" />
+            <remap from="/fiducial_vertices" to="/$(arg left_camera_prefix)$(arg camera_name)/fiducial_vertices" />
+        </node>
+    </group>
+
     <!-- Show outputs -->
-    <!-- Show raw image -->
     <group if="$(arg show_output)">
-        <node name="raw_output" pkg="image_view" type="image_view" respawn="true" output="screen">
-            <param name="autosize" value="false"/>
-            <remap from="image" to="$(arg camera_name)/image_raw"/>
+        <!-- Show raw image -->
+        <node name="raw_output" pkg="image_view" type="image_view" respawn="true" output="screen" ns="$(arg front_camera_prefix)$(arg camera_name)">
+            <param name="autosize" value="false" />
+            <remap from="image" to="$(arg front_camera_name)/image_raw" />
         </node>
         <!-- Show marker results -->
-        <node name="marker_results" pkg="image_view" type="image_view" respawn="true" output="screen">
-            <param name="autosize" value="false"/>
-            <remap from="image" to="/fiducial_images"/>
+        <node name="marker_results" pkg="image_view" type="image_view" respawn="true" output="screen" ns="$(arg front_camera_prefix)$(arg camera_name)">
+            <param name="autosize" value="false" />
+            <remap from="image" to="/fiducial_images" />
+        </node>
+
+        <!-- Show raw image -->
+        <node name="raw_output" pkg="image_view" type="image_view" respawn="true" output="screen" ns="$(arg front_camera_prefix)$(arg camera_name)">
+            <param name="autosize" value="false" />
+            <remap from="image" to="$(arg left_camera_name)/image_raw" />
+        </node>
+        <!-- Show marker results -->
+        <node name="marker_results" pkg="image_view" type="image_view" respawn="true" output="screen" ns="$(arg front_camera_prefix)$(arg camera_name)">
+            <param name="autosize" value="false" />
+            <remap from="image" to="/fiducial_images" />
         </node>
     </group>
 
     <!-- Launch Aruco TF publisher node -->
-    <!-- <node name="aruco_tf_node" pkg="shadowteleop" type="aruco_tf" respawn="true" output="screen" /> -->
+    <!-- <node name="aruco_tf_node" pkg="shadowcalib" type="aruco_tf" respawn="true" output="screen" /> -->
 
 </launch>
