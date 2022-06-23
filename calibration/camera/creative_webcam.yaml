@@ -1,0 +1,20 @@
+image_width: 1280
+image_height: 720
+camera_name: creative_webcam
+camera_matrix:
+  rows: 3
+  cols: 3
+  data: [1135.46818863173, 0, 580.3330312225035, 0, 1134.535772259403, 395.4257069700643, 0, 0, 1]
+distortion_model: plumb_bob
+distortion_coefficients:
+  rows: 1
+  cols: 5
+  data: [0.07543825563701841, -0.2197359774091291, 0.008779592322959977, -0.01229207747938719, 0]
+rectification_matrix:
+  rows: 3
+  cols: 3
+  data: [1, 0, 0, 0, 1, 0, 0, 0, 1]
+projection_matrix:
+  rows: 3
+  cols: 4
+  data: [1130.869750976562, 0, 563.0926160230229, 0, 0, 1149.983032226562, 400.1796551179032, 0, 0, 0, 1, 0]

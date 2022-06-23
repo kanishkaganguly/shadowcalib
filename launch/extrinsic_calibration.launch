@@ -1,0 +1,47 @@
+<launch>
+    <arg name="show_output" default="false"/>
+    <arg name="launch_calibration" default="false"/>
+    <arg name="camera_name" default="logitech_webcam"/>
+
+    <!-- Start webcam -->
+    <node name="$(arg camera_name)" pkg="usb_cam" type="usb_cam_node" output="screen">
+        <param name="video_device" value="/dev/video1" />
+        <param name="image_width" value="1920" />
+        <param name="image_height" value="1080" />
+        <param name="pixel_format" value="yuyv" />
+        <param name="camera_frame_id" value="tracking_cam" />
+        <param name="camera_name" value="$(arg camera_name)" />
+        <param name="camera_info_url" value="package://shadowteleop/calibration/camera/logitech_webcam.yaml" />
+        <param name="io_method" value="mmap"/>
+    </node>
+
+    <!-- Rectified image -->
+    <node name="rectify_image" pkg="image_proc" type="image_proc" output="screen" ns="$(arg camera_name)"/>
+
+    <!-- Start aruco tracker -->
+    <node name="aruco_detect" pkg="aruco_detect" type="aruco_detect" output="screen">
+        <remap from="camera" to="$(arg camera_name)/image_rect_color" />
+        <remap from="camera_info" to="$(arg camera_name)/camera_info" />
+        <param name="fiducial_len" value="0.05"/>
+        <param name="dictionary" value="5"/>
+        <param name="publish_images" value="true" />
+    </node>
+
+    <!-- Show outputs -->
+    <!-- Show raw image -->
+    <group if="$(arg show_output)">
+        <node name="raw_output" pkg="image_view" type="image_view" respawn="true" output="screen">
+            <param name="autosize" value="false"/>
+            <remap from="image" to="$(arg camera_name)/image_raw"/>
+        </node>
+        <!-- Show marker results -->
+        <node name="marker_results" pkg="image_view" type="image_view" respawn="true" output="screen">
+            <param name="autosize" value="false"/>
+            <remap from="image" to="/fiducial_images"/>
+        </node>
+    </group>
+
+    <!-- Launch Aruco TF publisher node -->
+    <!-- <node name="aruco_tf_node" pkg="shadowteleop" type="aruco_tf" respawn="true" output="screen" /> -->
+
+</launch>
